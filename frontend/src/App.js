@@ -5,9 +5,9 @@ import DragDropGraph from "./components/DragDropGraph";
 import Graph from "react-vis-network-graph";
 
 function App() {
-  const [resourceData, setResourceData] = useState(""); // Stores manual input
-  const [dragDropData, setDragDropData] = useState([]); // Stores drag & drop allocations
-  const [manualEntry, setManualEntry] = useState(true); // Toggle input mode
+  const [resourceData, setResourceData] = useState("");
+  const [dragDropData, setDragDropData] = useState([]);
+  const [manualEntry, setManualEntry] = useState(true);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -16,64 +16,96 @@ function App() {
     try {
       console.log("Sending request to server...");
 
-      // Select data based on input mode
       const allocationData = manualEntry
-        ? JSON.parse(resourceData) // Manual Entry (parse input)
-        : dragDropData; // Drag & Drop Data
+        ? JSON.parse(resourceData)
+        : dragDropData;
 
       console.log("Resource Allocation Data:", allocationData);
 
-      const response = await axios.post("http://127.0.0.1:5001/detect-deadlock", {
-        resource_allocation: allocationData,
-      });
+      const response = await axios.post(
+        "http://127.0.0.1:5001/detect-deadlock",
+        { resource_allocation: allocationData }
+      );
 
       console.log("Server response:", response.data);
       setResult(response.data);
     } catch (error) {
       console.error("Error detecting deadlock:", error);
-
-      if (error.response) {
-        console.error("Server Error Response:", error.response.data);
-      }
-
-      setResult({ error: "Failed to connect to the server. Please check if Flask backend is running." });
+      setResult({
+        error: "Failed to connect to the server. Please check if Flask backend is running.",
+      });
     }
     setLoading(false);
   };
 
-  // Function to prepare graph visualization data
   const getGraphData = () => {
     if (!result || !result.cycle || result.cycle.length === 0) return null;
-  
+
     let nodes = [];
     let edges = [];
     let seenNodes = new Set();
-  
+
     result.cycle.forEach(([from, to]) => {
       if (!seenNodes.has(from)) {
-        nodes.push({ id: from, label: from, color: "lightblue" });
+        nodes.push({
+          id: from,
+          label: from,
+          color: from.startsWith("P") ? "#4CAF50" : "#FF5722",
+          shape: from.startsWith("P") ? "ellipse" : "box",
+          font: { color: "white", size: 18, bold: true },
+          borderWidth: 3,
+        });
         seenNodes.add(from);
       }
       if (!seenNodes.has(to)) {
-        nodes.push({ id: to, label: to, color: "lightcoral" });
+        nodes.push({
+          id: to,
+          label: to,
+          color: to.startsWith("P") ? "#4CAF50" : "#FF5722",
+          shape: to.startsWith("P") ? "ellipse" : "box",
+          font: { color: "white", size: 18, bold: true },
+          borderWidth: 3,
+        });
         seenNodes.add(to);
       }
-      edges.push({ from, to, color: "red" });
+      edges.push({
+        from,
+        to,
+        color: { color: "#007BFF", highlight: "#FFC107" },
+        arrows: { to: { enabled: true, scaleFactor: 1.2 } },
+        width: 2.5,
+      });
     });
-  
+
     console.log("Graph Data:", { nodes, edges });
     return { nodes, edges };
   };
-  
+
 
   const graphData = getGraphData();
 
   return (
     <div className="container mt-5">
-      <h1 className="text-center mb-4">🔗 Deadlock Detection Toolkit</h1>
+      <header className="text-center mb-4">
+        <h1 className="display-4">🔗 Deadlock Detection Toolkit</h1>
+        <p className="lead text-muted">
+          Analyze resource allocation and detect deadlocks visually.
+        </p>
+      </header>
+
+      {/* About Deadlock Section */}
+      <div className="card mb-4 shadow-sm p-4">
+        <h2>What is a Deadlock? 🤔</h2>
+        <p>
+          A deadlock occurs when two or more processes are stuck waiting for
+          each other to release resources, creating a cycle with no way to
+          proceed. This tool helps visualize deadlocks and detect them in
+          resource allocation graphs.
+        </p>
+      </div>
 
       <div className="card p-4 shadow-lg">
-        {/* Mode Selection */}
+        <h2 className="mb-3">Choose Input Mode</h2>
         <div className="form-check">
           <input
             type="radio"
@@ -104,7 +136,7 @@ function App() {
           <textarea
             className="form-control mt-3"
             rows="5"
-            placeholder='Enter resource allocation (e.g., [["P1", "R1"], ["P2", "R2"], ["P3", "R1"], ["P1", "P3"]])'
+            placeholder='Enter resource allocation (e.g., [["P1", "R1"], ["P2", "R2"], ["R2", "P1"], ["R1", "P2"]])'
             value={resourceData}
             onChange={(e) => setResourceData(e.target.value)}
           />
@@ -114,7 +146,7 @@ function App() {
 
         {/* Detect Deadlock Button */}
         <button
-          className="btn btn-primary mt-3"
+          className="btn btn-primary mt-3 btn-lg"
           onClick={handleDetectDeadlock}
           disabled={loading}
         >
@@ -125,7 +157,7 @@ function App() {
       {/* Display Results */}
       {result && (
         <div className="card mt-4 p-4 shadow">
-          <h3 className="text-center">Result</h3>
+          <h3 className="text-center">Detection Result</h3>
           {result.error ? (
             <div className="alert alert-danger">{result.error}</div>
           ) : result.deadlock_detected ? (
@@ -136,13 +168,26 @@ function App() {
               </div>
               {graphData && (
                 <div className="mt-3">
-                  <h4>Deadlock Graph:</h4>
+                  <h4>Deadlock Graph Visualization:</h4>
                   <Graph
                     graph={graphData}
                     options={{
-                      nodes: { shape: "circle", font: { size: 16 } },
-                      edges: { arrows: "to", length: 200 },
-                      height: "400px",
+                      nodes: {
+                        shapeProperties: { useBorderWithImage: true },
+                        size: 35,
+                      },
+                      edges: {
+                        smooth: {
+                          type: "dynamic",
+                          roundness: 0.5,
+                        },
+                      },
+                      physics: {
+                        enabled: true,
+                        stabilization: { iterations: 200 },
+                      },
+                      layout: { improvedLayout: true },
+                      height: "500px",
                     }}
                   />
                 </div>
@@ -153,6 +198,11 @@ function App() {
           )}
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="text-center text-muted mt-5">
+        <p>🔗 Built for Deadlock Detection & Visualization</p>
+      </footer>
     </div>
   );
 }
