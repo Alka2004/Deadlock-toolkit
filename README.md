@@ -1,2 +1,6 @@
 # Deadlock-toolkit
-Deadlock Simulater
+<<<<<<< HEAD
+# Deadlock-toolkit
+Deadlock Simulater - A comprehensive toolkit for detecting, analyzing, and resolving deadlocks in concurrent systems. This toolkit provides utilities to identify circular wait conditions, monitor resource allocation, and implement strategies to prevent and recover from deadlocks.
+
+>>>>>>> 7f5798f8436ace83b0cda9bb7f1f59f2d54df02b
